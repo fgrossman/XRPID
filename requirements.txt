@@ -6,4 +6,4 @@ structlog==24.1.0
 
 google-auth==2.3.2
 
-google-cloud-firestore==2.18.0
+google-cloud-firestore==2.3.4
