@@ -18,12 +18,16 @@ from types import FrameType
 
 from datetime import datetime
 from flask import Flask, jsonify, request
+from flask_cors import CORS
+
 from google.cloud import firestore
 
 
 from utils.logging import logger
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
+
 
 # Initialize Firestore client
 db = firestore.Client()
