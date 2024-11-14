@@ -16,12 +16,49 @@ import signal
 import sys
 from types import FrameType
 
-from flask import Flask
+from flask import Flask, jsonify, request
+from google.cloud import firestore
+
 
 from utils.logging import logger
 
 app = Flask(__name__)
 
+# Initialize Firestore client
+db = firestore.Client()
+
+@app.route('/data', methods=['POST'])
+def create_data_entry():
+    # Get JSON data from the request
+    data = request.json
+
+    # Check if 'robot_id' is present in the request body
+    if 'XRPID' not in data:
+        return jsonify({'error': 'invalid usage'}), 400
+
+    # Extract fields from the JSON data
+    xrp_id = data.get('XRPID')
+    platform = data.get('platform')
+    ble = data.get('BLE')
+
+    # Get client IP address and user agent information
+    ip_address = request.remote_addr
+    user_agent = request.headers.get('User-Agent')
+
+    # Create a dictionary to store the data
+    entry = {
+        'xrp_id': xrp_id,
+        'platform': platform,
+        'ble': ble,
+        'timestamp': datetime.utcnow(),
+        'ip_address': ip_address,
+        'user_agent': user_agent
+    }
+
+    # Add the entry to Firestore
+    db.collection('data_entries').add(entry)
+
+    return jsonify({"message": "Data entry created successfully"}), 201
 
 @app.route("/")
 def hello() -> str:
@@ -31,7 +68,7 @@ def hello() -> str:
     # https://cloud.google.com/run/docs/logging#correlate-logs
     logger.info("Child logger with trace Id.")
 
-    return "Hello, World2!"
+    return "version 1!"
 
 
 def shutdown_handler(signal_int: int, frame: FrameType) -> None:

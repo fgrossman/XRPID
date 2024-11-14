@@ -5,3 +5,5 @@ requests==2.32.0
 structlog==24.1.0
 
 google-auth==2.3.2
+
+google-cloud-firestore==2.18.0
