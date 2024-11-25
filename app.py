@@ -47,7 +47,11 @@ def create_data_entry():
     ble = data.get('BLE')
 
     # Get client IP address and user agent information
-    ip_address = request.remote_addr
+    #ip_address = request.remote_addr
+    # Extract the client's IP address from the X-Forwarded-For header
+    x_forwarded_for = request.headers.get('X-Forwarded-For', '')
+    ip_address = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.remote_addr
+
     user_agent = request.headers.get('User-Agent')
 
     # Create a dictionary to store the data
