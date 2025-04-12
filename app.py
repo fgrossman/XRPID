@@ -16,8 +16,8 @@ import signal
 import sys
 from types import FrameType
 
-from datetime import datetime
-from flask import Flask, jsonify, request
+from datetime import datetime, timedelta
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 
 import requests
@@ -91,14 +91,9 @@ def create_data_entry():
     return jsonify({"message": "Data entry created successfully"}), 201
 
 @app.route("/")
-def hello() -> str:
-    # Use basic logging with custom fields
-    logger.info(logField="custom-entry", arbitraryField="custom-entry")
-
-    # https://cloud.google.com/run/docs/logging#correlate-logs
-    logger.info("Child logger with trace Id.")
-
-    return "version 1!"
+def index():
+    # Serve the HTML file
+    return render_template("index.html")
 
 @app.route("/api/getData", methods=["GET"])
 def get_data():
