@@ -85,12 +85,25 @@ def create_data_entry():
         'user_agent': user_agent
     }
 
+    geocoded = geocode_ip(entry.get("ip_address", ""))
+    entry.update(geocoded)
+
     # Add the entry to Firestore
     db.collection('data_entries').add(entry)
 
     return jsonify({"message": "Data entry created successfully"}), 201
 
 @app.route("/")
+def hello() -> str:
+    # Use basic logging with custom fields
+    logger.info(logField="custom-entry", arbitraryField="custom-entry")
+
+    # https://cloud.google.com/run/docs/logging#correlate-logs
+    logger.info("Child logger with trace Id.")
+
+    return "version 2!"
+
+@app.route("/dashboard")
 def index():
     # Serve the HTML file
     return render_template("index.html")
