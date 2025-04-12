@@ -20,7 +20,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
-from geopy.geocoders import Nominatim
+import requests
 
 from google.cloud import firestore
 
@@ -37,20 +37,24 @@ db = firestore.Client()
 # Initialize Geolocator
 geolocator = Nominatim(user_agent="xrp_geocoder")
 
+IPINFO_TOKEN = '4d022234dbb4fc'
+
 def geocode_ip(ip_address):
-    """Geocode an IP address into a location."""
     try:
-        # Placeholder geocoding logic for IP (replace with actual API or method as needed)
-        location = geolocator.geocode(ip_address)
-        if location:
-            return {
-                "latitude": location.latitude,
-                "longitude": location.longitude,
-                "city": location.raw.get("address", {}).get("city", "Unknown"),
-                "state": location.raw.get("address", {}).get("state", "Unknown")
-            }
+        response = requests.get(f'https://ipinfo.io/{ip_address}?token={IPINFO_TOKEN}')
+        if response.status_code == 200:
+            data = response.json()
+            if 'loc' in data:
+                latitude, longitude = map(float, data['loc'].split(','))
+                return {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "city": data.get('city', 'Unknown'),
+                    "state": data.get('region', 'Unknown')
+                }
     except Exception as e:
-        print(f"Geocoding failed for IP {ip_address}: {e}")
+        print(f"Failed to geocode {ip_address}: {e}")
+
     return {"latitude": None, "longitude": None, "city": "Unknown", "state": "Unknown"}
 
 @app.route('/data', methods=['POST'])
