@@ -180,6 +180,11 @@ function processData(data) {
     let totalXrps = 0, bluetoothCount = 0, macCount = 0, windowsCount = 0, chromebookCount = 0;
 
     data.forEach(row => {
+        //grab the unique id. There is some chance the other data is not available.
+        if(row.xrp_id){
+            uniqueXRP.add(row.xrp_id);
+        }
+
         if (!row.latitude || !row.longitude || !row.city || !row.state || !row.xrp_id) return;
 
         const key = `${row.city},${row.state}`;
@@ -205,8 +210,6 @@ function processData(data) {
         if (row.user_agent.includes("Windows NT")) cityStats[key].windows++;
         if (row.user_agent.includes("CrOS")) cityStats[key].chromebook++;
 
-
-        uniqueXRP.add(row.xrp_id);
         totalXrps++;
         if (row.ble) bluetoothCount++;
         if (row.user_agent.includes("Macintosh")) macCount++;
