@@ -101,6 +101,8 @@
     const today = new Date();
     const yesterday = new Date();
     yesterday.setDate(today.getDate() - 1);
+    let lastStartDate = '';
+    let lastEndDate = '';
 
     document.getElementById('startDate').value = yesterday.toISOString().split('T')[0];
     document.getElementById('endDate').value = today.toISOString().split('T')[0];
@@ -120,29 +122,26 @@
     }
     document.getElementById("defaultOpen").click();
 
-    document.getElementById("fileInput").addEventListener("change", function(event) {
-        const file = event.target.files[0];
-        if (file) {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    let data2 = JSON.parse(results);
-                    processData(data2.data);
-                }
-            });
-        }
-    });
-
     async function fetchData() {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
+
+        // Check if date range has changed
+    if (startDate === lastStartDate && endDate === lastEndDate) {
+        console.log('Date range unchanged — skipping fetch');
+        return;
+    }
+
+    // Save new date range
+    lastStartDate = startDate;
+    lastEndDate = endDate;
 
         try {
             const response = await fetch(`/api/getData?start=${startDate}&end=${endDate}`);
             const result = await response.json();
 
             if (result.data) {
+                resetMapAndDashboard();
                 processData(result.data);  // Pass only the array part
             } else {
                 console.error('Error fetching data:', result);
@@ -152,13 +151,32 @@
         }
 }
 
-    function processData(data) {
-    const map = L.map('map').setView([0, 0], 2);
+function resetMapAndDashboard() {
+    // Remove old map instance if exists
+    if (window.currentMap) {
+        window.currentMap.remove();
+    }
+
+    // Create new blank map
+    window.currentMap = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(window.currentMap);
+
+    // Clear dashboard content
+    document.getElementById('dashboard').innerHTML = '';
+}
+
+function processData(data) {
+
+    const map = window.currentMap;   
+    //const map = L.map('map').setView([0, 0], 2);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     const cityStats = {};
+    const uniqueXRP = new set();
     let totalXrps = 0, bluetoothCount = 0, macCount = 0, windowsCount = 0, chromebookCount = 0;
 
     data.forEach(row => {
@@ -172,6 +190,7 @@
                 latitude: row.latitude,
                 longitude: row.longitude,
                 xrps: new Set(),
+                totalXrps: 0,
                 bluetooth: 0,
                 mac: 0,
                 windows: 0,
@@ -180,11 +199,14 @@
         }
 
         cityStats[key].xrps.add(row.xrp_id);
+        cityStats[key].totalXrps++;
         if (row.ble) cityStats[key].bluetooth++;
         if (row.user_agent.includes("Macintosh")) cityStats[key].mac++;
         if (row.user_agent.includes("Windows NT")) cityStats[key].windows++;
         if (row.user_agent.includes("CrOS")) cityStats[key].chromebook++;
 
+
+        uniqueXRP.add(row.xrp_id);
         totalXrps++;
         if (row.ble) bluetoothCount++;
         if (row.user_agent.includes("Macintosh")) macCount++;
@@ -196,7 +218,7 @@
         const popupContent = `
             <strong>${stat.city}, ${stat.state}</strong><br>
             Unique XRPs: ${stat.xrps.size}<br>
-            % Bluetooth: ${(stat.bluetooth / stat.xrps.size * 100).toFixed(0)}%<br>
+            % Bluetooth: ${(stat.bluetooth / stat.totalXrps.size * 100).toFixed(0)}%<br>
             Mac Machines: ${stat.mac}<br>
             Windows Machines: ${stat.windows}<br>
             Chromebooks: ${stat.chromebook}
@@ -208,7 +230,7 @@
     const dashboard = document.getElementById("dashboard");
     dashboard.innerHTML = `
         <div><h2>🌍 Total Cities</h2><p>${Object.keys(cityStats).length}</p></div>
-        <div><h2>🔗 Unique XRPs</h2><p>${totalXrps}</p></div>
+        <div><h2>🔗 Unique XRPs</h2><p>${globalXrps.size}</p></div>
         <div><h2>📶 Bluetooth Connections</h2><p>${((bluetoothCount / totalXrps) * 100).toFixed(0)}%</p></div>
         <div><h2>💻 Mac Machines</h2><p>${macCount}</p></div>
         <div><h2>🖥️ Windows Machines</h2><p>${windowsCount}</p></div>
