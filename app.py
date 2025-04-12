@@ -20,6 +20,8 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
+from geopy.geocoders import Nominatim
+
 from google.cloud import firestore
 
 
@@ -31,6 +33,25 @@ CORS(app)  # Enable CORS for all routes
 
 # Initialize Firestore client
 db = firestore.Client()
+
+# Initialize Geolocator
+geolocator = Nominatim(user_agent="xrp_geocoder")
+
+def geocode_ip(ip_address):
+    """Geocode an IP address into a location."""
+    try:
+        # Placeholder geocoding logic for IP (replace with actual API or method as needed)
+        location = geolocator.geocode(ip_address)
+        if location:
+            return {
+                "latitude": location.latitude,
+                "longitude": location.longitude,
+                "city": location.raw.get("address", {}).get("city", "Unknown"),
+                "state": location.raw.get("address", {}).get("state", "Unknown")
+            }
+    except Exception as e:
+        print(f"Geocoding failed for IP {ip_address}: {e}")
+    return {"latitude": None, "longitude": None, "city": "Unknown", "state": "Unknown"}
 
 @app.route('/data', methods=['POST'])
 def create_data_entry():
@@ -78,6 +99,41 @@ def hello() -> str:
     logger.info("Child logger with trace Id.")
 
     return "version 1!"
+
+@app.route("/api/getData", methods=["GET"])
+def get_data():
+    try:
+        # Get date range from query parameters
+        start_date = request.args.get("start", (datetime.now() - timedelta(days=7)).isoformat())
+        end_date = request.args.get("end", datetime.now().isoformat())
+
+        # Convert to timestamps
+        start_timestamp = datetime.fromisoformat(start_date)
+        end_timestamp = datetime.fromisoformat(end_date)
+
+        # Query Firestore for data within the date range
+        docs = db.collection('data_entries')
+                  .where("timestamp", ">=", start_timestamp)
+                  .where("timestamp", "<=", end_timestamp)
+                  .stream()
+
+        # Parse documents and geocode missing locations
+        data = []
+        for doc in docs:
+            entry = doc.to_dict()
+            if not (entry.get("latitude") and entry.get("longitude")):
+                geocoded = geocode_ip(entry.get("ip_address", ""))
+                entry.update(geocoded)
+
+                # Optionally update Firestore with geocoded data
+                db.collection('data_entries').document(doc.id).update(geocoded)
+
+            data.append(entry)
+
+        return jsonify({"status": "success", "data": data})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 
 def shutdown_handler(signal_int: int, frame: FrameType) -> None:
