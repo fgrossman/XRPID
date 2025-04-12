@@ -112,10 +112,7 @@ def get_data():
         end_timestamp = datetime.fromisoformat(end_date)
 
         # Query Firestore for data within the date range
-        docs = db.collection('data_entries')
-                  .where("timestamp", ">=", start_timestamp)
-                  .where("timestamp", "<=", end_timestamp)
-                  .stream()
+        docs = db.collection('data_entries').where("timestamp", ">=", start_timestamp).where("timestamp", "<=", end_timestamp).stream()
 
         # Parse documents and geocode missing locations
         data = []
