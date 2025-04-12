@@ -30,12 +30,8 @@ from utils.logging import logger
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-
 # Initialize Firestore client
 db = firestore.Client()
-
-# Initialize Geolocator
-geolocator = Nominatim(user_agent="xrp_geocoder")
 
 IPINFO_TOKEN = '4d022234dbb4fc'
 
