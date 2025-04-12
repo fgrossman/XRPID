@@ -164,7 +164,7 @@ function resetMapAndDashboard() {
     }).addTo(window.currentMap);
 
     // Clear dashboard content
-    document.getElementById('dashboard').innerHTML = '';
+    //document.getElementById('dashboard').innerHTML = '';
 }
 
 function processData(data) {
@@ -176,7 +176,7 @@ function processData(data) {
     }).addTo(map);
 
     const cityStats = {};
-    const uniqueXRP = new set();
+    const uniqueXRP = new Set();
     let totalXrps = 0, bluetoothCount = 0, macCount = 0, windowsCount = 0, chromebookCount = 0;
 
     data.forEach(row => {
@@ -218,7 +218,7 @@ function processData(data) {
         const popupContent = `
             <strong>${stat.city}, ${stat.state}</strong><br>
             Unique XRPs: ${stat.xrps.size}<br>
-            % Bluetooth: ${(stat.bluetooth / stat.totalXrps.size * 100).toFixed(0)}%<br>
+            Bluetooth: ${(stat.bluetooth / stat.totalXrps * 100).toFixed(0)}%<br>
             Mac Machines: ${stat.mac}<br>
             Windows Machines: ${stat.windows}<br>
             Chromebooks: ${stat.chromebook}
@@ -230,7 +230,7 @@ function processData(data) {
     const dashboard = document.getElementById("dashboard");
     dashboard.innerHTML = `
         <div><h2>🌍 Total Cities</h2><p>${Object.keys(cityStats).length}</p></div>
-        <div><h2>🔗 Unique XRPs</h2><p>${globalXrps.size}</p></div>
+        <div><h2>🔗 Unique XRPs</h2><p>${uniqueXRP.size}</p></div>
         <div><h2>📶 Bluetooth Connections</h2><p>${((bluetoothCount / totalXrps) * 100).toFixed(0)}%</p></div>
         <div><h2>💻 Mac Machines</h2><p>${macCount}</p></div>
         <div><h2>🖥️ Windows Machines</h2><p>${windowsCount}</p></div>
