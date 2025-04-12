@@ -66,6 +66,10 @@
             font-weight: bold;
             margin: 0;
         }
+        .filters {
+            text-align: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -76,6 +80,15 @@
 </div>
 
 <div id="Map" class="tabcontent active">
+    <div class="filters">
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" />
+
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" />
+
+        <button onclick="fetchData()">Apply</button>
+    </div>
     <div id="map"></div>
 </div>
 
@@ -83,9 +96,15 @@
     <div class="dashboard" id="dashboard"></div>
 </div>
 
-<input type="file" id="fileInput" accept=".csv" style="margin: 20px; display: block;" />
 
 <script>
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    document.getElementById('startDate').value = yesterday.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+
     function openTab(evt, tabName) {
         var i, tabcontent, tablinks;
         tabcontent = document.getElementsByClassName("tabcontent");
@@ -108,83 +127,94 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    processData(results.data);
+                    let data2 = JSON.parse(results);
+                    processData(data2.data);
                 }
             });
         }
     });
 
+    async function fetchData() {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        try {
+            const response = await fetch(`/api/getData?start=${startDate}&end=${endDate}`);
+            const result = await response.json();
+
+            if (result.data) {
+                processData(result.data);  // Pass only the array part
+            } else {
+                console.error('Error fetching data:', result);
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+        }
+}
+
     function processData(data) {
-        const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+    const map = L.map('map').setView([0, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
 
-        const cityStats = {};
-        let totalXrps = 0, bluetoothCount = 0, macCount = 0, windowsCount = 0, chromebookCount = 0;
-        let UniqueXRPs = new Set();
+    const cityStats = {};
+    let totalXrps = 0, bluetoothCount = 0, macCount = 0, windowsCount = 0, chromebookCount = 0;
 
-        data.forEach(row => {
-            if (!row.latitude || !row.longitude || !row.city || !row.state || !row.xrp_id) return;
+    data.forEach(row => {
+        if (!row.latitude || !row.longitude || !row.city || !row.state || !row.xrp_id) return;
 
-            const key = `${row.city},${row.state}`;
-            if (!cityStats[key]) {
-                cityStats[key] = {
-                    city: row.city,
-                    state: row.state,
-                    latitude: parseFloat(row.latitude),
-                    longitude: parseFloat(row.longitude),
-                    xrps: new Set(),
-                    bluetooth: 0,
-                    mac: 0,
-                    windows: 0,
-                    chromebook: 0,
-                    totalConnections: 0
-                };
-            }
+        const key = `${row.city},${row.state}`;
+        if (!cityStats[key]) {
+            cityStats[key] = {
+                city: row.city,
+                state: row.state,
+                latitude: row.latitude,
+                longitude: row.longitude,
+                xrps: new Set(),
+                bluetooth: 0,
+                mac: 0,
+                windows: 0,
+                chromebook: 0
+            };
+        }
 
-            cityStats[key].totalConnections++;
-            if(cityStats[key].xrps[row.xrp_id] == undefined){
-                cityStats[key].xrps.add(row.xrp_id);
-            }
-            if (row.ble === "True" || row.ble === "true") cityStats[key].bluetooth++;
-            if (row.user_agent.includes("Macintosh")) cityStats[key].mac++;
-            if (row.user_agent.includes("Windows NT")) cityStats[key].windows++;
-            if (row.user_agent.includes("CrOS")) cityStats[key].chromebook++;
+        cityStats[key].xrps.add(row.xrp_id);
+        if (row.ble) cityStats[key].bluetooth++;
+        if (row.user_agent.includes("Macintosh")) cityStats[key].mac++;
+        if (row.user_agent.includes("Windows NT")) cityStats[key].windows++;
+        if (row.user_agent.includes("CrOS")) cityStats[key].chromebook++;
 
-            totalXrps++;
-            if(UniqueXRPs[row.xrp_id] == undefined){
-                UniqueXRPs.add(row.xrp_id);
-            }
-            if (row.ble === "True" || row.ble === "true") bluetoothCount++;
-            if (row.user_agent.includes("Macintosh")) macCount++;
-            if (row.user_agent.includes("Windows NT")) windowsCount++;
-            if (row.user_agent.includes("CrOS")) chromebookCount++;
-        });
+        totalXrps++;
+        if (row.ble) bluetoothCount++;
+        if (row.user_agent.includes("Macintosh")) macCount++;
+        if (row.user_agent.includes("Windows NT")) windowsCount++;
+        if (row.user_agent.includes("CrOS")) chromebookCount++;
+    });
 
-        Object.values(cityStats).forEach(stat => {
-            const popupContent = `
-                <strong>${stat.city}, ${stat.state}</strong><br>
-                Unique XRPs: ${stat.xrps.size}<br>
-                Bluetooth: ${(stat.bluetooth / stat.totalConnections * 100).toFixed(0)}%<br>
-                Mac Machines: ${stat.mac}<br>
-                Windows Machines: ${stat.windows}<br>
-                Chromebooks: ${stat.chromebook}
-            `;
-            L.marker([stat.latitude, stat.longitude]).addTo(map)
-                .bindPopup(popupContent);
-        });
-
-        const dashboard = document.getElementById("dashboard");
-        dashboard.innerHTML = `
-            <div><h2>🌍 Total Cities</h2><p>${Object.keys(cityStats).length}</p></div>
-            <div><h2>🔗 Unique XRPs</h2><p>${UniqueXRPs.size}</p></div>
-            <div><h2>📶 Bluetooth Connections</h2><p>${((bluetoothCount / totalXrps) * 100).toFixed(0)}%</p></div>
-            <div><h2>💻 Mac Machines</h2><p>${macCount}</p></div>
-            <div><h2>🖥️ Windows Machines</h2><p>${windowsCount}</p></div>
-            <div><h2>💼 Chromebooks</h2><p>${chromebookCount}</p></div>
+    Object.values(cityStats).forEach(stat => {
+        const popupContent = `
+            <strong>${stat.city}, ${stat.state}</strong><br>
+            Unique XRPs: ${stat.xrps.size}<br>
+            % Bluetooth: ${(stat.bluetooth / stat.xrps.size * 100).toFixed(0)}%<br>
+            Mac Machines: ${stat.mac}<br>
+            Windows Machines: ${stat.windows}<br>
+            Chromebooks: ${stat.chromebook}
         `;
-    }
+        L.marker([stat.latitude, stat.longitude]).addTo(map)
+            .bindPopup(popupContent);
+    });
+
+    const dashboard = document.getElementById("dashboard");
+    dashboard.innerHTML = `
+        <div><h2>🌍 Total Cities</h2><p>${Object.keys(cityStats).length}</p></div>
+        <div><h2>🔗 Unique XRPs</h2><p>${totalXrps}</p></div>
+        <div><h2>📶 Bluetooth Connections</h2><p>${((bluetoothCount / totalXrps) * 100).toFixed(0)}%</p></div>
+        <div><h2>💻 Mac Machines</h2><p>${macCount}</p></div>
+        <div><h2>🖥️ Windows Machines</h2><p>${windowsCount}</p></div>
+        <div><h2>💼 Chromebooks</h2><p>${chromebookCount}</p></div>
+    `;
+}
 </script>
 
 </body>
