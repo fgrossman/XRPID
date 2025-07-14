@@ -120,7 +120,7 @@ def hello() -> str:
     # https://cloud.google.com/run/docs/logging#correlate-logs
     logger.info("Child logger with trace Id.")
 
-    return "version 2!"
+    return "version 2.1!"
 
 @app.route("/dashboard")
 def index():
