@@ -36,6 +36,25 @@ db = firestore.Client()
 IPINFO_TOKEN = '4d022234dbb4fc'
 
 def geocode_ip(ip_address):
+    # First, check if we already have geocoded data for this IP address
+    try:
+        # Query Firestore for existing entries with this IP address that have latitude data
+        existing_docs = db.collection('data_entries').where("ip_address", "==", ip_address).where("latitude", "!=", None).limit(1).stream()
+        
+        for doc in existing_docs:
+            entry = doc.to_dict()
+            if entry.get("latitude") and entry.get("longitude"):
+                # Return existing geocoded data
+                return {
+                    "latitude": entry.get("latitude"),
+                    "longitude": entry.get("longitude"),
+                    "city": entry.get("city", "Unknown"),
+                    "state": entry.get("state", "Unknown")
+                }
+    except Exception as e:
+        print(f"Failed to query existing geocoded data for {ip_address}: {e}")
+
+    # If no existing data found, call ipinfo API
     try:
         response = requests.get(f'https://ipinfo.io/{ip_address}?token={IPINFO_TOKEN}')
         if response.status_code == 200:
