@@ -42,6 +42,7 @@ def geocode_ip(ip_address):
         existing_docs = db.collection('data_entries').where("ip_address", "==", ip_address).where("latitude", "!=", None).limit(1).stream()
         
         for doc in existing_docs:
+            print(f"Found existing geocoded data for {ip_address}")
             entry = doc.to_dict()
             if entry.get("latitude") and entry.get("longitude"):
                 # Return existing geocoded data
@@ -56,6 +57,7 @@ def geocode_ip(ip_address):
 
     # If no existing data found, call ipinfo API
     try:
+        print(f"Calling ipinfo API for {ip_address}")
         response = requests.get(f'https://ipinfo.io/{ip_address}?token={IPINFO_TOKEN}')
         if response.status_code == 200:
             data = response.json()
