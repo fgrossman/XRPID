@@ -43,7 +43,7 @@ def geocode_ip(ip_address):
         for doc in existing_docs:
             entry = doc.to_dict()
             if entry.get("latitude") is not None and entry.get("longitude") is not None:
-                print(f"Found existing geocoded data for {ip_address}")
+                #print(f"Found existing geocoded data for {ip_address}")
                 return {
                     "latitude": entry.get("latitude"),
                     "longitude": entry.get("longitude"),
@@ -61,7 +61,7 @@ def geocode_ip(ip_address):
             data = response.json()
             if 'loc' in data:
                 latitude, longitude = map(float, data['loc'].split(','))
-                print(f"Geocoded {ip_address} to {latitude}, {longitude}")
+                #print(f"Geocoded {ip_address} to {latitude}, {longitude}")
                 return {
                     "latitude": latitude,
                     "longitude": longitude,
@@ -121,7 +121,7 @@ def hello() -> str:
     # https://cloud.google.com/run/docs/logging#correlate-logs
     logger.info("Child logger with trace Id.")
 
-    return "version 2.2!"
+    return "version 2.3!"
 
 @app.route("/dashboard")
 def index():
