@@ -271,7 +271,7 @@ function processData(data) {
             const xrpType = (row.xrp_type || row.XRPType || '').toString().trim().toLowerCase();
             if (xrpType === 'beta') {
                 xrpTypeBeta.add(xrpId);
-            } else if (xrpType === 'V1') {
+            } else if (xrpType === 'v1') {
                 xrpTypeV1.add(xrpId);
             } else if (xrpType === 'nano') {
                 xrpTypeNano.add(xrpId);
