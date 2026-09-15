@@ -35,6 +35,10 @@ db = firestore.Client()
 
 IPINFO_TOKEN = '4d022234dbb4fc'
 
+# POST /data started writing lat/lng in b259699 (2025-04-12 00:46:26 EDT).
+# Queries that start after this can skip the slow read-time ipinfo backfill.
+GEOCODE_ON_WRITE_SINCE = datetime(2025, 4, 12, 4, 46, 26)
+
 def geocode_ip(ip_address):
     # First, check if we already have geocoded data for this IP address
     try:
@@ -86,6 +90,7 @@ def create_data_entry():
     xrp_id = data.get('XRPID')
     platform = data.get('platform')
     ble = data.get('BLE')
+    xrp_type = data.get('XRPType')
 
     # Get client IP address and user agent information
     #ip_address = request.remote_addr
@@ -100,6 +105,7 @@ def create_data_entry():
         'xrp_id': xrp_id,
         'platform': platform,
         'ble': ble,
+        'xrp_type': xrp_type,
         'timestamp': datetime.utcnow(),
         'ip_address': ip_address,
         'user_agent': user_agent
@@ -121,7 +127,7 @@ def hello() -> str:
     # https://cloud.google.com/run/docs/logging#correlate-logs
     logger.info("Child logger with trace Id.")
 
-    return "version 2.3!"
+    return "version 2.4!"
 
 @app.route("/dashboard")
 def index():
@@ -142,15 +148,14 @@ def get_data():
         # Query Firestore for data within the date range
         docs = db.collection('data_entries').where("timestamp", ">=", start_timestamp).where("timestamp", "<=", end_timestamp).stream()
 
-        # Parse documents and geocode missing locations
+        backfill_missing_geo = start_timestamp < GEOCODE_ON_WRITE_SINCE
+
         data = []
         for doc in docs:
             entry = doc.to_dict()
-            if not (entry.get("latitude") and entry.get("longitude")):
+            if backfill_missing_geo and not (entry.get("latitude") and entry.get("longitude")):
                 geocoded = geocode_ip(entry.get("ip_address", ""))
                 entry.update(geocoded)
-
-                # Optionally update Firestore with geocoded data
                 db.collection('data_entries').document(doc.id).update(geocoded)
 
             data.append(entry)
